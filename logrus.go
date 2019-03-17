@@ -26,34 +26,19 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 		return nil, err
 	}
 
-	stdOutHandler := os.Stdout
-
-	fileHandler := &lumberjack.Logger{
-		Filename: config.FileLocation,
-		MaxSize:  100,
-		Compress: true,
-		MaxAge:   28,
-	}
-
 	lLogger := &logrus.Logger{
-		Out:       stdOutHandler,
+		Out:       os.Stdout,
 		Formatter: getFormatter(config.ConsoleJSONFormat),
 		Hooks:     make(logrus.LevelHooks),
 		Level:     l.level,
 	}
 
-	if config.EnableConsole && config.EnableFile {
-		lLogger.SetOutput(io.MultiWriter(stdOutHandler, fileHandler))
-	} else {
-		if config.EnableFile {
-			lLogger.SetOutput(fileHandler)
-			lLogger.SetFormatter(getFormatter(config.FileJSONFormat))
-		}
+	log := &logrusLogger{
+		logger: lLogger,
 	}
 
-	return &logrusLogger{
-		logger: lLogger,
-	}, nil
+	log.setOutput(config.EnableConsole, config.EnableFile, config.FileJSONFormat, config.FileLocation)
+	return log, nil
 }
 
 func getLogLevel(consoleLevel, filelevel string) (*logrusLogLevel, error) {
@@ -79,6 +64,24 @@ func getFormatter(isJSON bool) logrus.Formatter {
 	return &logrus.TextFormatter{
 		FullTimestamp:          true,
 		DisableLevelTruncation: true,
+	}
+}
+
+func (l *logrusLogger) setOutput(enableConsole, enableFile, isJSON bool, fileLocation string) {
+	fileHandler := &lumberjack.Logger{
+		Filename: fileLocation,
+		MaxSize:  100,
+		Compress: true,
+		MaxAge:   28,
+	}
+
+	if enableConsole && enableFile {
+		l.logger.SetOutput(io.MultiWriter(l.logger.Out, fileHandler))
+	} else {
+		if enableFile {
+			l.logger.SetOutput(fileHandler)
+			l.logger.SetFormatter(getFormatter(isJSON))
+		}
 	}
 }
 
