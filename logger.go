@@ -51,10 +51,10 @@ type Logger interface {
 type Configuration struct {
 	EnableConsole     bool
 	ConsoleJSONFormat bool
+	ConsoleLevel      string
 	EnableFile        bool
 	FileJSONFormat    bool
 	FileLevel         string
-	ConsoleLevel      string
 	FileLocation      string
 }
 
