@@ -115,6 +115,10 @@ func (l *logrusLogger) WithFields(fields Fields) Logger {
 	}
 }
 
+func (l *logrusLogger) GetLogger() interface{} {
+	return l.logger
+}
+
 func (l *logrusLogEntry) Debugf(format string, args ...interface{}) {
 	l.entry.Debugf(format, args...)
 }
@@ -141,6 +145,10 @@ func (l *logrusLogEntry) Panicf(format string, args ...interface{}) {
 
 func (l *logrusLogEntry) WithFields(fields Fields) Logger {
 	return l.WithFields(fields)
+}
+
+func (l *logrusLogEntry) GetLogger() interface{} {
+	return l.entry
 }
 
 func convertToLogrusFields(fields Fields) logrus.Fields {

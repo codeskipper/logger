@@ -44,6 +44,7 @@ type Logger interface {
 	Fatalf(format string, args ...interface{})
 	Panicf(format string, args ...interface{})
 	WithFields(keyValues Fields) Logger
+	GetLogger() interface{}
 }
 
 // Configuration stores the config for the logger
@@ -104,6 +105,10 @@ func Fatalf(format string, args ...interface{}) {
 
 func Panicf(format string, args ...interface{}) {
 	log.Panicf(format, args...)
+}
+
+func GetLogger() interface{} {
+	return log.GetLogger()
 }
 
 func WithFields(keyValues Fields) Logger {
