@@ -8,6 +8,7 @@ var log Logger
 //Fields Type to pass when we want to call WithFields for structured logging
 type Fields map[string]interface{}
 
+// Available logger level
 const (
 	//Debug has verbose message
 	Debug = "debug"
@@ -21,29 +22,27 @@ const (
 	Fatal = "fatal"
 )
 
+// Available logger instance
 const (
+	//InstanceZapLogger will be used to create Zap instance for the logger
 	InstanceZapLogger int = iota
+	//InstanceLogrusLogger will be used to create Logrus instance for the logger
 	InstanceLogrusLogger
 )
 
+// Available error message
 var (
 	errInvalidLoggerInstance = errors.New("Invalid logger instance")
 )
 
-//Logger is our contract for the logger
+//This is the list of all available method for logger
 type Logger interface {
 	Debugf(format string, args ...interface{})
-
 	Infof(format string, args ...interface{})
-
 	Warnf(format string, args ...interface{})
-
 	Errorf(format string, args ...interface{})
-
 	Fatalf(format string, args ...interface{})
-
 	Panicf(format string, args ...interface{})
-
 	WithFields(keyValues Fields) Logger
 }
 
@@ -52,12 +51,11 @@ type Logger interface {
 type Configuration struct {
 	EnableConsole     bool
 	ConsoleJSONFormat bool
-	ConsoleLevel      string
 	EnableFile        bool
 	FileJSONFormat    bool
 	FileLevel         string
-	//File location to write log
-	FileLocation string
+	ConsoleLevel      string
+	FileLocation      string
 }
 
 //NewLogger returns an instance of logger provided
