@@ -16,13 +16,12 @@ type logrusLogger struct {
 	logger *logrus.Logger
 }
 
-func newLogrusLogger(config Configuration) (Logger, error) {
-	logLevel := config.ConsoleLevel
-	if logLevel == "" {
-		logLevel = config.FileLevel
-	}
+type logrusLogLevel struct {
+	level logrus.Level
+}
 
-	level, err := logrus.ParseLevel(logLevel)
+func newLogrusLogger(config Configuration) (Logger, error) {
+	l, err := getLogLevel(config.ConsoleLevel, config.FileLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +39,7 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 		Out:       stdOutHandler,
 		Formatter: getFormatter(config.ConsoleJSONFormat),
 		Hooks:     make(logrus.LevelHooks),
-		Level:     level,
+		Level:     l.level,
 	}
 
 	if config.EnableConsole && config.EnableFile {
@@ -54,6 +53,22 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 
 	return &logrusLogger{
 		logger: lLogger,
+	}, nil
+}
+
+func getLogLevel(consoleLevel, filelevel string) (*logrusLogLevel, error) {
+	logLevel := consoleLevel
+	if logLevel == "" {
+		logLevel = filelevel
+	}
+
+	l, err := logrus.ParseLevel(logLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	return &logrusLogLevel{
+		level: l,
 	}, nil
 }
 
