@@ -16,16 +16,6 @@ type logrusLogger struct {
 	logger *logrus.Logger
 }
 
-func getFormatter(isJSON bool) logrus.Formatter {
-	if isJSON {
-		return &logrus.JSONFormatter{}
-	}
-	return &logrus.TextFormatter{
-		FullTimestamp:          true,
-		DisableLevelTruncation: true,
-	}
-}
-
 func newLogrusLogger(config Configuration) (Logger, error) {
 	logLevel := config.ConsoleLevel
 	if logLevel == "" {
@@ -38,12 +28,14 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 	}
 
 	stdOutHandler := os.Stdout
+
 	fileHandler := &lumberjack.Logger{
 		Filename: config.FileLocation,
 		MaxSize:  100,
 		Compress: true,
 		MaxAge:   28,
 	}
+
 	lLogger := &logrus.Logger{
 		Out:       stdOutHandler,
 		Formatter: getFormatter(config.ConsoleJSONFormat),
@@ -63,6 +55,16 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 	return &logrusLogger{
 		logger: lLogger,
 	}, nil
+}
+
+func getFormatter(isJSON bool) logrus.Formatter {
+	if isJSON {
+		return &logrus.JSONFormatter{}
+	}
+	return &logrus.TextFormatter{
+		FullTimestamp:          true,
+		DisableLevelTruncation: true,
+	}
 }
 
 func (l *logrusLogger) Debugf(format string, args ...interface{}) {
@@ -96,27 +98,27 @@ func (l *logrusLogger) WithFields(fields Fields) Logger {
 }
 
 func (l *logrusLogEntry) Debugf(format string, args ...interface{}) {
-	l.Debugf(format, args...)
+	l.entry.Debugf(format, args...)
 }
 
 func (l *logrusLogEntry) Infof(format string, args ...interface{}) {
-	l.Infof(format, args...)
+	l.entry.Infof(format, args...)
 }
 
 func (l *logrusLogEntry) Warnf(format string, args ...interface{}) {
-	l.Warnf(format, args...)
+	l.entry.Warnf(format, args...)
 }
 
 func (l *logrusLogEntry) Errorf(format string, args ...interface{}) {
-	l.Errorf(format, args...)
+	l.entry.Errorf(format, args...)
 }
 
 func (l *logrusLogEntry) Fatalf(format string, args ...interface{}) {
-	l.Fatalf(format, args...)
+	l.entry.Fatalf(format, args...)
 }
 
 func (l *logrusLogEntry) Panicf(format string, args ...interface{}) {
-	l.Fatalf(format, args...)
+	l.entry.Fatalf(format, args...)
 }
 
 func (l *logrusLogEntry) WithFields(fields Fields) Logger {

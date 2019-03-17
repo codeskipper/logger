@@ -2,6 +2,7 @@ package logger
 
 import "errors"
 
+// A global variable so that log functions can be directly accessed
 var log Logger
 
 //Fields Type to pass when we want to call WithFields for structured logging
@@ -21,8 +22,8 @@ const (
 )
 
 const (
-	//InstanceZapLogger will be used to create Zap instance for the logger
 	InstanceZapLogger int = iota
+	InstanceLogrusLogger
 )
 
 var (
@@ -46,7 +47,7 @@ type Logger interface {
 	WithFields(keyValues Fields) Logger
 }
 
-// Configuration stores the config for the Logger
+// Configuration stores the config for the logger
 // For some loggers there can only be one level across writers, for such the level of Console is picked by default
 type Configuration struct {
 	EnableConsole     bool
@@ -55,20 +56,32 @@ type Configuration struct {
 	EnableFile        bool
 	FileJSONFormat    bool
 	FileLevel         string
-	FileLocation      string
+	//File location to write log
+	FileLocation string
 }
 
-//NewLogger returns an instance of Logger
+//NewLogger returns an instance of logger provided
 func NewLogger(config Configuration, loggerInstance int) error {
-	if loggerInstance == InstanceZapLogger {
+	switch loggerInstance {
+	case InstanceZapLogger:
 		logger, err := newZapLogger(config)
 		if err != nil {
 			return err
 		}
 		log = logger
 		return nil
+
+	case InstanceLogrusLogger:
+		logger, err := newLogrusLogger(config)
+		if err != nil {
+			return err
+		}
+		log = logger
+		return nil
+
+	default:
+		return errInvalidLoggerInstance
 	}
-	return errInvalidLoggerInstance
 }
 
 func Debugf(format string, args ...interface{}) {
