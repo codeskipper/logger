@@ -22,6 +22,13 @@ const (
 	Fatal = "fatal"
 )
 
+const (
+	LogrusConsoleConfig = "LOGRUS_CONSOLE_CONFIG"
+	LogrusFileConfig    = "LOGRUS_FILE_CONFIG"
+	ZapConsoleConfig    = "ZAP_CONSOLE_CONFIG"
+	ZapFileConfig       = "ZAP_FILE_CONFIG"
+)
+
 // Available logger instance
 const (
 	//InstanceZapLogger will be used to create Zap instance for the logger
@@ -49,15 +56,7 @@ type Logger interface {
 
 // Configuration stores the config for the logger
 // For some loggers there can only be one level across writers, for such the level of Console is picked by default
-type Configuration struct {
-	EnableConsole     bool
-	ConsoleJSONFormat bool
-	ConsoleLevel      string
-	EnableFile        bool
-	FileJSONFormat    bool
-	FileLevel         string
-	FileLocation      string
-}
+type Configuration map[string]interface{}
 
 //NewLogger returns an instance of logger provided
 func NewLogger(config Configuration, loggerInstance int) error {

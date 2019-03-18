@@ -8,6 +8,19 @@ import (
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
+type LogrusConsoleConfiguration struct {
+	Enable     bool
+	JSONFormat bool
+	Level      string
+}
+
+type LogrusFileConfiguration struct {
+	Enable     bool
+	JSONFormat bool
+	Level      string
+	Path       string
+}
+
 type logrusLogEntry struct {
 	entry *logrus.Entry
 }
@@ -17,14 +30,25 @@ type logrusLogger struct {
 }
 
 func newLogrusLogger(config Configuration) (Logger, error) {
-	level, err := getLogLevel(config.ConsoleLevel, config.FileLevel)
+	var consoleConfig LogrusConsoleConfiguration
+	var fileConfig LogrusFileConfiguration
+
+	if config, ok := config[LogrusConsoleConfig]; ok {
+		consoleConfig = config.(LogrusConsoleConfiguration)
+	}
+
+	if config, ok := config[LogrusFileConfig]; ok {
+		fileConfig = config.(LogrusFileConfiguration)
+	}
+
+	level, err := getLogLevel(consoleConfig.Level, fileConfig.Level)
 	if err != nil {
 		return nil, err
 	}
 
 	lLogger := &logrus.Logger{
 		Out:       os.Stdout,
-		Formatter: getFormatter(config.ConsoleJSONFormat),
+		Formatter: getFormatter(consoleConfig.JSONFormat),
 		Hooks:     make(logrus.LevelHooks),
 		Level:     level,
 	}
@@ -33,7 +57,7 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 		logger: lLogger,
 	}
 
-	log.setOutput(config.EnableConsole, config.EnableFile, config.FileJSONFormat, config.FileLocation)
+	log.setOutput(consoleConfig.Enable, fileConfig.Enable, fileConfig.JSONFormat, fileConfig.Path)
 	return log, nil
 }
 
@@ -61,9 +85,9 @@ func getFormatter(isJSON bool) logrus.Formatter {
 	}
 }
 
-func (l *logrusLogger) setOutput(enableConsole, enableFile, isJSON bool, fileLocation string) {
+func (l *logrusLogger) setOutput(enableConsole, enableFile, isFileJSON bool, filepath string) {
 	fileHandler := &lumberjack.Logger{
-		Filename: fileLocation,
+		Filename: filepath,
 		MaxSize:  100,
 		Compress: true,
 		MaxAge:   28,
@@ -74,7 +98,7 @@ func (l *logrusLogger) setOutput(enableConsole, enableFile, isJSON bool, fileLoc
 	} else {
 		if enableFile {
 			l.logger.SetOutput(fileHandler)
-			l.logger.SetFormatter(getFormatter(isJSON))
+			l.logger.SetFormatter(getFormatter(isFileJSON))
 		}
 	}
 }

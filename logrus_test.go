@@ -9,10 +9,14 @@ import (
 )
 
 func TestLogrusEntryF(t *testing.T) {
+	consoleConfig := LogrusConsoleConfiguration{
+		Enable:     true,
+		Level:      Debug,
+		JSONFormat: false,
+	}
+
 	config := Configuration{
-		EnableConsole:     true,
-		ConsoleLevel:      "debug",
-		ConsoleJSONFormat: false,
+		LogrusConsoleConfig: consoleConfig,
 	}
 
 	tests := []struct {
