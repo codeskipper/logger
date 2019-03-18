@@ -25,46 +25,10 @@ type zapLogger struct {
 	sugaredLogger *zap.SugaredLogger
 }
 
-func getEncoder(isJSON bool) zapcore.Encoder {
-	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	encoderConfig.TimeKey = "time"
-	if isJSON {
-		return zapcore.NewJSONEncoder(encoderConfig)
-	}
-	return zapcore.NewConsoleEncoder(encoderConfig)
-}
-
-func getZapLevel(level string) zapcore.Level {
-	switch level {
-	case Info:
-		return zapcore.InfoLevel
-	case Warn:
-		return zapcore.WarnLevel
-	case Debug:
-		return zapcore.DebugLevel
-	case Error:
-		return zapcore.ErrorLevel
-	case Fatal:
-		return zapcore.FatalLevel
-	default:
-		return zapcore.InfoLevel
-	}
-}
-
 func newZapLogger(config Configuration) (Logger, error) {
 	cores := []zapcore.Core{}
 
-	var consoleConfig ZapConsoleConfiguration
-	var fileConfig ZapFileConfiguration
-
-	if config, ok := config[ZapConsoleConfig]; ok {
-		consoleConfig = config.(ZapConsoleConfiguration)
-	}
-
-	if config, ok := config[ZapFileConfig]; ok {
-		fileConfig = config.(ZapFileConfiguration)
-	}
+	consoleConfig, fileConfig := getZapConfig(config)
 
 	if consoleConfig.Enable {
 		level := getZapLevel(consoleConfig.Level)
@@ -95,6 +59,48 @@ func newZapLogger(config Configuration) (Logger, error) {
 	return &zapLogger{
 		sugaredLogger: logger,
 	}, nil
+}
+
+func getZapConfig(config Configuration) (ZapConsoleConfiguration, ZapFileConfiguration) {
+	var consoleConfig ZapConsoleConfiguration
+	var fileConfig ZapFileConfiguration
+
+	if config, ok := config[ZapConsoleConfig]; ok {
+		consoleConfig = config.(ZapConsoleConfiguration)
+	}
+
+	if config, ok := config[ZapFileConfig]; ok {
+		fileConfig = config.(ZapFileConfiguration)
+	}
+
+	return consoleConfig, fileConfig
+}
+
+func getEncoder(isJSON bool) zapcore.Encoder {
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.TimeKey = "time"
+	if isJSON {
+		return zapcore.NewJSONEncoder(encoderConfig)
+	}
+	return zapcore.NewConsoleEncoder(encoderConfig)
+}
+
+func getZapLevel(level string) zapcore.Level {
+	switch level {
+	case Info:
+		return zapcore.InfoLevel
+	case Warn:
+		return zapcore.WarnLevel
+	case Debug:
+		return zapcore.DebugLevel
+	case Error:
+		return zapcore.ErrorLevel
+	case Fatal:
+		return zapcore.FatalLevel
+	default:
+		return zapcore.InfoLevel
+	}
 }
 
 func (l *zapLogger) Debugf(format string, args ...interface{}) {

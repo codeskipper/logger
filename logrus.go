@@ -30,16 +30,7 @@ type logrusLogger struct {
 }
 
 func newLogrusLogger(config Configuration) (Logger, error) {
-	var consoleConfig LogrusConsoleConfiguration
-	var fileConfig LogrusFileConfiguration
-
-	if config, ok := config[LogrusConsoleConfig]; ok {
-		consoleConfig = config.(LogrusConsoleConfiguration)
-	}
-
-	if config, ok := config[LogrusFileConfig]; ok {
-		fileConfig = config.(LogrusFileConfiguration)
-	}
+	consoleConfig, fileConfig := getLogrusConfig(config)
 
 	level, err := getLogLevel(consoleConfig.Level, fileConfig.Level)
 	if err != nil {
@@ -59,6 +50,21 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 
 	log.setOutput(consoleConfig.Enable, fileConfig.Enable, fileConfig.JSONFormat, fileConfig.Path)
 	return log, nil
+}
+
+func getLogrusConfig(config Configuration) (LogrusConsoleConfiguration, LogrusFileConfiguration) {
+	var consoleConfig LogrusConsoleConfiguration
+	var fileConfig LogrusFileConfiguration
+
+	if config, ok := config[LogrusConsoleConfig]; ok {
+		consoleConfig = config.(LogrusConsoleConfiguration)
+	}
+
+	if config, ok := config[LogrusFileConfig]; ok {
+		fileConfig = config.(LogrusFileConfiguration)
+	}
+
+	return consoleConfig, fileConfig
 }
 
 func getLogLevel(consoleLevel, filelevel string) (logrus.Level, error) {
