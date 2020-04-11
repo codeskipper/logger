@@ -8,12 +8,77 @@ import (
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
+type LogrusConsoleConfiguration struct {
+	Enable     bool
+	JSONFormat bool
+	Level      string
+}
+
+type LogrusFileConfiguration struct {
+	Enable     bool
+	JSONFormat bool
+	Level      string
+	Path       string
+}
+
 type logrusLogEntry struct {
 	entry *logrus.Entry
 }
 
 type logrusLogger struct {
 	logger *logrus.Logger
+}
+
+func newLogrusLogger(config Configuration) (Logger, error) {
+	consoleConfig, fileConfig := getLogrusConfig(config)
+
+	level, err := getLogLevel(consoleConfig.Level, fileConfig.Level)
+	if err != nil {
+		return nil, err
+	}
+
+	lLogger := &logrus.Logger{
+		Out:       os.Stdout,
+		Formatter: getFormatter(consoleConfig.JSONFormat),
+		Hooks:     make(logrus.LevelHooks),
+		Level:     level,
+	}
+
+	log := &logrusLogger{
+		logger: lLogger,
+	}
+
+	log.setOutput(consoleConfig.Enable, fileConfig.Enable, fileConfig.JSONFormat, fileConfig.Path)
+	return log, nil
+}
+
+func getLogrusConfig(config Configuration) (LogrusConsoleConfiguration, LogrusFileConfiguration) {
+	var consoleConfig LogrusConsoleConfiguration
+	var fileConfig LogrusFileConfiguration
+
+	if config, ok := config[LogrusConsoleConfig]; ok {
+		consoleConfig = config.(LogrusConsoleConfiguration)
+	}
+
+	if config, ok := config[LogrusFileConfig]; ok {
+		fileConfig = config.(LogrusFileConfiguration)
+	}
+
+	return consoleConfig, fileConfig
+}
+
+func getLogLevel(consoleLevel, filelevel string) (logrus.Level, error) {
+	logLevel := consoleLevel
+	if logLevel == "" {
+		logLevel = filelevel
+	}
+
+	level, err := logrus.ParseLevel(logLevel)
+	if err != nil {
+		return 0, err
+	}
+
+	return level, nil
 }
 
 func getFormatter(isJSON bool) logrus.Formatter {
@@ -26,43 +91,22 @@ func getFormatter(isJSON bool) logrus.Formatter {
 	}
 }
 
-func newLogrusLogger(config Configuration) (Logger, error) {
-	logLevel := config.ConsoleLevel
-	if logLevel == "" {
-		logLevel = config.FileLevel
-	}
-
-	level, err := logrus.ParseLevel(logLevel)
-	if err != nil {
-		return nil, err
-	}
-
-	stdOutHandler := os.Stdout
+func (l *logrusLogger) setOutput(enableConsole, enableFile, isFileJSON bool, filepath string) {
 	fileHandler := &lumberjack.Logger{
-		Filename: config.FileLocation,
+		Filename: filepath,
 		MaxSize:  100,
 		Compress: true,
 		MaxAge:   28,
 	}
-	lLogger := &logrus.Logger{
-		Out:       stdOutHandler,
-		Formatter: getFormatter(config.ConsoleJSONFormat),
-		Hooks:     make(logrus.LevelHooks),
-		Level:     level,
-	}
 
-	if config.EnableConsole && config.EnableFile {
-		lLogger.SetOutput(io.MultiWriter(stdOutHandler, fileHandler))
+	if enableConsole && enableFile {
+		l.logger.SetOutput(io.MultiWriter(l.logger.Out, fileHandler))
 	} else {
-		if config.EnableFile {
-			lLogger.SetOutput(fileHandler)
-			lLogger.SetFormatter(getFormatter(config.FileJSONFormat))
+		if enableFile {
+			l.logger.SetOutput(fileHandler)
+			l.logger.SetFormatter(getFormatter(isFileJSON))
 		}
 	}
-
-	return &logrusLogger{
-		logger: lLogger,
-	}, nil
 }
 
 func (l *logrusLogger) Debugf(format string, args ...interface{}) {
@@ -95,32 +139,40 @@ func (l *logrusLogger) WithFields(fields Fields) Logger {
 	}
 }
 
+func (l *logrusLogger) GetLogger() interface{} {
+	return l.logger
+}
+
 func (l *logrusLogEntry) Debugf(format string, args ...interface{}) {
-	l.Debugf(format, args...)
+	l.entry.Debugf(format, args...)
 }
 
 func (l *logrusLogEntry) Infof(format string, args ...interface{}) {
-	l.Infof(format, args...)
+	l.entry.Infof(format, args...)
 }
 
 func (l *logrusLogEntry) Warnf(format string, args ...interface{}) {
-	l.Warnf(format, args...)
+	l.entry.Warnf(format, args...)
 }
 
 func (l *logrusLogEntry) Errorf(format string, args ...interface{}) {
-	l.Errorf(format, args...)
+	l.entry.Errorf(format, args...)
 }
 
 func (l *logrusLogEntry) Fatalf(format string, args ...interface{}) {
-	l.Fatalf(format, args...)
+	l.entry.Fatalf(format, args...)
 }
 
 func (l *logrusLogEntry) Panicf(format string, args ...interface{}) {
-	l.Fatalf(format, args...)
+	l.entry.Fatalf(format, args...)
 }
 
 func (l *logrusLogEntry) WithFields(fields Fields) Logger {
 	return l.WithFields(fields)
+}
+
+func (l *logrusLogEntry) GetLogger() interface{} {
+	return l.entry
 }
 
 func convertToLogrusFields(fields Fields) logrus.Fields {

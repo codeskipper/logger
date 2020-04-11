@@ -2,11 +2,13 @@ package logger
 
 import "errors"
 
+// A global variable so that log functions can be directly accessed
 var log Logger
 
 //Fields Type to pass when we want to call WithFields for structured logging
 type Fields map[string]interface{}
 
+// Available logger level
 const (
 	//Debug has verbose message
 	Debug = "debug"
@@ -21,54 +23,63 @@ const (
 )
 
 const (
-	//InstanceZapLogger will be used to create Zap instance for the logger
-	InstanceZapLogger int = iota
+	LogrusConsoleConfig = "LOGRUS_CONSOLE_CONFIG"
+	LogrusFileConfig    = "LOGRUS_FILE_CONFIG"
+	ZapConsoleConfig    = "ZAP_CONSOLE_CONFIG"
+	ZapFileConfig       = "ZAP_FILE_CONFIG"
 )
 
+// Available logger instance
+const (
+	//InstanceZapLogger will be used to create Zap instance for the logger
+	InstanceZapLogger int = iota
+	//InstanceLogrusLogger will be used to create Logrus instance for the logger
+	InstanceLogrusLogger
+)
+
+// Available error message
 var (
 	errInvalidLoggerInstance = errors.New("Invalid logger instance")
 )
 
-//Logger is our contract for the logger
+//This is the list of all available method for logger
 type Logger interface {
 	Debugf(format string, args ...interface{})
-
 	Infof(format string, args ...interface{})
-
 	Warnf(format string, args ...interface{})
-
 	Errorf(format string, args ...interface{})
-
 	Fatalf(format string, args ...interface{})
-
 	Panicf(format string, args ...interface{})
-
 	WithFields(keyValues Fields) Logger
+	GetLogger() interface{}
 }
 
-// Configuration stores the config for the Logger
+// Configuration stores the config for the logger
 // For some loggers there can only be one level across writers, for such the level of Console is picked by default
-type Configuration struct {
-	EnableConsole     bool
-	ConsoleJSONFormat bool
-	ConsoleLevel      string
-	EnableFile        bool
-	FileJSONFormat    bool
-	FileLevel         string
-	FileLocation      string
-}
+type Configuration map[string]interface{}
 
-//NewLogger returns an instance of Logger
+//NewLogger returns an instance of logger provided
 func NewLogger(config Configuration, loggerInstance int) error {
-	if loggerInstance == InstanceZapLogger {
+	switch loggerInstance {
+	case InstanceZapLogger:
 		logger, err := newZapLogger(config)
 		if err != nil {
 			return err
 		}
 		log = logger
 		return nil
+
+	case InstanceLogrusLogger:
+		logger, err := newLogrusLogger(config)
+		if err != nil {
+			return err
+		}
+		log = logger
+		return nil
+
+	default:
+		return errInvalidLoggerInstance
 	}
-	return errInvalidLoggerInstance
 }
 
 func Debugf(format string, args ...interface{}) {
@@ -93,6 +104,10 @@ func Fatalf(format string, args ...interface{}) {
 
 func Panicf(format string, args ...interface{}) {
 	log.Panicf(format, args...)
+}
+
+func GetLogger() interface{} {
+	return log.GetLogger()
 }
 
 func WithFields(keyValues Fields) Logger {

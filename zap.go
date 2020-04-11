@@ -8,8 +8,72 @@ import (
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
+type ZapConsoleConfiguration struct {
+	Enable     bool
+	JSONFormat bool
+	Level      string
+}
+
+type ZapFileConfiguration struct {
+	Enable     bool
+	JSONFormat bool
+	Level      string
+	Path       string
+}
+
 type zapLogger struct {
 	sugaredLogger *zap.SugaredLogger
+}
+
+func newZapLogger(config Configuration) (Logger, error) {
+	cores := []zapcore.Core{}
+
+	consoleConfig, fileConfig := getZapConfig(config)
+
+	if consoleConfig.Enable {
+		level := getZapLevel(consoleConfig.Level)
+		writer := zapcore.Lock(os.Stdout)
+		core := zapcore.NewCore(getEncoder(consoleConfig.JSONFormat), writer, level)
+		cores = append(cores, core)
+	}
+
+	if fileConfig.Enable {
+		level := getZapLevel(fileConfig.Level)
+		writer := zapcore.AddSync(&lumberjack.Logger{
+			Filename: fileConfig.Path,
+			MaxSize:  100,
+			Compress: true,
+			MaxAge:   28,
+		})
+		core := zapcore.NewCore(getEncoder(fileConfig.JSONFormat), writer, level)
+		cores = append(cores, core)
+	}
+
+	combinedCore := zapcore.NewTee(cores...)
+
+	logger := zap.New(combinedCore,
+		zap.AddCallerSkip(2),
+		zap.AddCaller(),
+	).Sugar()
+
+	return &zapLogger{
+		sugaredLogger: logger,
+	}, nil
+}
+
+func getZapConfig(config Configuration) (ZapConsoleConfiguration, ZapFileConfiguration) {
+	var consoleConfig ZapConsoleConfiguration
+	var fileConfig ZapFileConfiguration
+
+	if config, ok := config[ZapConsoleConfig]; ok {
+		consoleConfig = config.(ZapConsoleConfiguration)
+	}
+
+	if config, ok := config[ZapFileConfig]; ok {
+		fileConfig = config.(ZapFileConfiguration)
+	}
+
+	return consoleConfig, fileConfig
 }
 
 func getEncoder(isJSON bool) zapcore.Encoder {
@@ -39,40 +103,6 @@ func getZapLevel(level string) zapcore.Level {
 	}
 }
 
-func newZapLogger(config Configuration) (Logger, error) {
-	cores := []zapcore.Core{}
-
-	if config.EnableConsole {
-		level := getZapLevel(config.ConsoleLevel)
-		writer := zapcore.Lock(os.Stdout)
-		core := zapcore.NewCore(getEncoder(config.ConsoleJSONFormat), writer, level)
-		cores = append(cores, core)
-	}
-
-	if config.EnableFile {
-		level := getZapLevel(config.FileLevel)
-		writer := zapcore.AddSync(&lumberjack.Logger{
-			Filename: config.FileLocation,
-			MaxSize:  100,
-			Compress: true,
-			MaxAge:   28,
-		})
-		core := zapcore.NewCore(getEncoder(config.FileJSONFormat), writer, level)
-		cores = append(cores, core)
-	}
-
-	combinedCore := zapcore.NewTee(cores...)
-
-	logger := zap.New(combinedCore,
-		zap.AddCallerSkip(2),
-		zap.AddCaller(),
-	).Sugar()
-
-	return &zapLogger{
-		sugaredLogger: logger,
-	}, nil
-}
-
 func (l *zapLogger) Debugf(format string, args ...interface{}) {
 	l.sugaredLogger.Debugf(format, args...)
 }
@@ -95,6 +125,10 @@ func (l *zapLogger) Fatalf(format string, args ...interface{}) {
 
 func (l *zapLogger) Panicf(format string, args ...interface{}) {
 	l.sugaredLogger.Fatalf(format, args...)
+}
+
+func (l *zapLogger) GetLogger() interface{} {
+	return l.sugaredLogger
 }
 
 func (l *zapLogger) WithFields(fields Fields) Logger {
